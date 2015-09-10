@@ -14,5 +14,6 @@ setup(name=name,
       url=package.__url__,
       maintainer=package.__maintainer__,
       maintainer_email=package.__email__,
+      install_requires = ['requests'],
       packages=find_packages()
 )
