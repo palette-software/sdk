@@ -48,4 +48,28 @@ State
    :reqheader Cookie: the auth_tkt returned from authentication.
    :statuscode 200: OK
    :statuscode 403: authentication is required (any level)
+
+Manage
+======
+
+.. http:post:: /api/v1/manage
       
+   Control of the Tableau Server.
+
+   :form action: (required) the desired action (see below)
+   :type action: str
+   :form sync: (optional) synchronous request
+   :type sync: bool
+   :reqheader Cookie: the auth_tkt returned from authentication.
+   :statuscode 200: OK
+   :statuscode 400: the required form parameter 'action' is missing.
+   :statuscode 403: authentication is required (Manager or Super Admin)
+
+**Allowable actions:**
+
+* *start* - start the Tableau Server
+* *stop* - stop the Tableau Server
+* *restart* - restart the Tableau Server
+* *repair-license* - equivalent to 'tabadmin licenses --repair_service'
+* *ziplogs* - cleanup Tableau Server logs
+   
