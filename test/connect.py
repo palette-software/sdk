@@ -10,8 +10,11 @@ import palette
 
 class TestConnectMethods(unittest.TestCase):
     """ These tests assume a valid ~/.palette file."""
-    def test(self):
+    def test_basic(self):
         palette.connect('HTTP://localhost:8080/')
+    def test_state(self):
+        server = palette.connect('http://localhost:8080')
+        self.assertIsNotNone(server.state)
 
 if __name__ == '__main__':
     unittest.main()

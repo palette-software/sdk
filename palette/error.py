@@ -1,8 +1,15 @@
 """Exception classes for all Palette Errors."""
 
-class PaletteError(StandardError):
+# apparently RequestException is a deep subclass...
+# pylint: disable=too-many-ancestors
+
+from requests.exceptions import RequestException
+
+class PaletteError(RequestException):
     """Base class for all Palette exceptions."""
-    pass
+    def __init__(self, message, data=None):
+        super(PaletteError, self).__init__(message)
+        self.data = data
 
 class PaletteInternalError(PaletteError):
     """Internal error for the Palette Server."""

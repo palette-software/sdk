@@ -5,7 +5,12 @@ import ConfigParser as configparser
 import requests
 
 from .config import PARSER, SECTION_CREDENTIALS
+from .error import PaletteError
 from .error import PaletteAuthenticationError, PaletteInternalError
+
+STATUS_KEY = 'status'
+ERROR_KEY = 'error'
+STATE_KEY = 'state'
 
 def check_url(url):
     """Sanity check to ensure that the passed URL *may* represent
@@ -23,10 +28,42 @@ def check_url(url):
         raise ValueError("The url path must be '/'")
     return urlparse.urlunsplit(parts)
 
+def status_ok(data):
+    """Check if the server responded with 'status: OK' in the JSON data.
+
+    Returns:
+      bool: whether or not the call completed successfully.
+    """
+    if STATUS_KEY not in data:
+        message = "JSON data did not contain '{0}'".format(STATUS_KEY)
+        raise PaletteInternalError(message, data=data)
+
+    if data[STATUS_KEY] == 'OK':
+        return True
+    return False
+
+def raise_for_error(data):
+    """Raise an exception if the JSON response contained an error.
+
+    Returns:
+      NoneType: the return is None if the JSON data doesn't contain an error.
+    """
+    if status_ok(data):
+        del data[STATUS_KEY]
+        return
+
+    if not ERROR_KEY in data:
+        message = "JSON data did not contain '{0}'".format(ERROR_KEY)
+        raise PaletteInternalError(message, data=data)
+    raise PaletteError(data[ERROR_KEY], data=data)
+
+
 class PaletteServer(object):
     """An interface to a particular Palette Server."""
 
     LOGIN_PATH_INFO = '/login/authenticate'
+
+    STATE_PATH_INFO = '/api/state'
 
     COOKIE_AUTH_TKT = 'auth_tkt'
 
@@ -58,9 +95,18 @@ class PaletteServer(object):
         self.security_token = security_token
         self.auth_tkt = None
 
-    def _url(self, path_info):
-        """Build the full url for the specified path_info."""
-        return urlparse.urljoin(self.url, path_info)
+    @property
+    def state(self):
+        """ A string representing the current state of the environment.
+        NOTE: This is a keyword value, not the status message in the UI.
+
+        Returns:
+          str: The state of the environment.
+        Raises:
+          RequestError: general communication failures
+        """
+        data = self.get(self.STATE_PATH_INFO)
+        return data[STATE_KEY]
 
     def authenticate(self):
         """Authenticate the user against this Palette server.
@@ -78,6 +124,24 @@ class PaletteServer(object):
         if self.COOKIE_AUTH_TKT not in res.cookies:
             raise PaletteInternalError("'auth_tkt' is missing from response.")
         self.auth_tkt = res.cookies[self.COOKIE_AUTH_TKT]
+
+    def get(self, url, params=None):
+        """Send a GET request to the server and receive a JSON response back.
+        This method should rarely be needed outside of internal use.
+
+        Returns:
+          dict: JSON response
+        """
+        cookies = {self.COOKIE_AUTH_TKT: self.auth_tkt}
+        res = requests.get(self._url(url), params=params, cookies=cookies)
+        res.raise_for_status()
+        data = res.json()
+        raise_for_error(data)
+        return data
+
+    def _url(self, path_info):
+        """Build the full url for the specified path_info."""
+        return urlparse.urljoin(self.url, path_info)
 
 
 def connect(url, username=None, password=None, security_token=None):
