@@ -12,7 +12,7 @@ class PaletteError(RequestException):
         self.data = data
 
 class PaletteInternalError(PaletteError):
-    """Internal error for the Palette Server."""
+    """Internal error."""
     pass
 
 class PaletteAuthenticationError(PaletteError):

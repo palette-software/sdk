@@ -15,11 +15,6 @@ STATE_KEY = 'state'
 def check_url(url):
     """Sanity check to ensure that the passed URL *may* represent
     a Palette Server instance.
-
-    Raises:
-      ValueError: if a component of the URL is invalid.
-    Returns:
-      str: normalized version of the specified URL.
     """
     parts = urlparse.urlsplit(url)
     if parts.scheme != 'http' and parts.scheme != 'https':
@@ -30,9 +25,6 @@ def check_url(url):
 
 def status_ok(data):
     """Check if the server responded with 'status: OK' in the JSON data.
-
-    Returns:
-      bool: whether or not the call completed successfully.
     """
     if STATUS_KEY not in data:
         message = "JSON data did not contain '{0}'".format(STATUS_KEY)
@@ -43,11 +35,7 @@ def status_ok(data):
     return False
 
 def raise_for_error(data):
-    """Raise an exception if the JSON response contained an error.
-
-    Returns:
-      NoneType: the return is None if the JSON data doesn't contain an error.
-    """
+    """Raise an exception if the JSON response contained an error."""
     if status_ok(data):
         del data[STATUS_KEY]
         return
@@ -59,24 +47,23 @@ def raise_for_error(data):
 
 
 class PaletteServer(object):
-    """An interface to a particular Palette Server."""
+    """An interface to a particular Palette Server. The values
+    passed to the constructor override any corresponding values in ~/.palette.
 
+    :param username: The Palette username to use for authentication
+    :type username: str
+    :param password: The password for `username`
+    :type password: str
+    :raises: ValueError
+    """
     LOGIN_PATH_INFO = '/login/authenticate'
 
-    STATE_PATH_INFO = '/api/state'
+    STATE_PATH_INFO = '/api/v1/state'
 
     COOKIE_AUTH_TKT = 'auth_tkt'
 
     def __init__(self, url, username=None, password=None, security_token=None):
-        """Initialize the instance with the given parameters.
-
-        Arguments:
-          username (str): the Palette username to use for authentication
-          password (str): the password for username
-
-        Raises:
-          ValueError: if an argument is incorrect.
-        """
+        """Initialize the instance with the given parameters."""
         self.url = check_url(url)
         if username is None:
             try:
@@ -98,12 +85,10 @@ class PaletteServer(object):
     @property
     def state(self):
         """ A string representing the current state of the environment.
+
         NOTE: This is a keyword value, not the status message in the UI.
 
-        Returns:
-          str: The state of the environment.
-        Raises:
-          RequestError: general communication failures
+        :returns: str -- the state of the environment.
         """
         data = self.get(self.STATE_PATH_INFO)
         return data[STATE_KEY]
@@ -111,8 +96,7 @@ class PaletteServer(object):
     def authenticate(self):
         """Authenticate the user against this Palette server.
 
-        Raises:
-          PaletteAuthenticationError
+        :raises: PaletteAuthenticationError
         """
         payload = {'username': self.username, 'password': self.password}
         res = requests.post(self._url(self.LOGIN_PATH_INFO),
@@ -126,11 +110,14 @@ class PaletteServer(object):
         self.auth_tkt = res.cookies[self.COOKIE_AUTH_TKT]
 
     def get(self, url, params=None):
-        """Send a GET request to the server and receive a JSON response back.
+        """Send a GET request to the server and receives a JSON response back.
         This method should rarely be needed outside of internal use.
 
-        Returns:
-          dict: JSON response
+        :param url: The Palette Server URL
+        :type url: str
+        :param params: Any query string information
+        :type params: dict
+        :returns: dict -- the JSON response
         """
         cookies = {self.COOKIE_AUTH_TKT: self.auth_tkt}
         res = requests.get(self._url(url), params=params, cookies=cookies)
@@ -147,11 +134,8 @@ class PaletteServer(object):
 def connect(url, username=None, password=None, security_token=None):
     """Create a PaletteServer instance and authenticate
 
-    Returns:
-      PaletteServer instance
-    Raises:
-      PaletteAuthenticationError: if the username or password is incorrect.
-      ValueError: if an argument is incorrect.
+    :returns: a :class:`PaletteServer <palette.PaletteServer>` instance
+    :raises: PaletteAuthenticationError, ValueError
     """
     server = PaletteServer(url, username=username, password=password,
                            security_token=security_token)

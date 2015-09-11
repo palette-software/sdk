@@ -1,6 +1,6 @@
 include pylint.mk
 
-all: pylint sdist
+all: pylint sdist doc
 .PHONY: all
 
 sdist:
@@ -11,7 +11,12 @@ pylint:
 	$(PYLINT) palette
 .PHONY: pylint
 
+doc:
+	make -C doc html
+.PHONY: doc
+
 clean:
 	rm -rf dist palette.egg-info
 	find palette -name \*.py[co] -exec rm '{}' ';'
+	make -C doc clean
 .PHONY: clean
