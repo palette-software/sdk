@@ -8,9 +8,19 @@ from .config import PARSER, SECTION_CREDENTIALS
 from .error import PaletteError
 from .error import PaletteAuthenticationError, PaletteInternalError
 
-STATUS_KEY = 'status'
-ERROR_KEY = 'error'
-STATE_KEY = 'state'
+class JsonKeys(object):
+    """Allowable key name for JSON responses."""
+    STATUS = 'status'
+    ERROR = 'error'
+    STATE = 'state'
+
+class ManageActions(object):
+    """Allowable actions for the 'manage' endpoint."""
+    START = 'start'
+    STOP = 'stop'
+    RESTART = 'restart'
+    REPAIR_LICENSE = 'repair-license'
+    ZIPLOGS = 'ziplogs'
 
 def check_url(url):
     """Sanity check to ensure that the passed URL *may* represent
@@ -26,24 +36,24 @@ def check_url(url):
 def status_ok(data):
     """Check if the server responded with 'status: OK' in the JSON data.
     """
-    if STATUS_KEY not in data:
-        message = "JSON data did not contain '{0}'".format(STATUS_KEY)
+    if JsonKeys.STATUS not in data:
+        message = "JSON data did not contain '{0}'".format(JsonKeys.STATUS)
         raise PaletteInternalError(message, data=data)
 
-    if data[STATUS_KEY] == 'OK':
+    if data[JsonKeys.STATUS] == 'OK':
         return True
     return False
 
 def raise_for_error(data):
     """Raise an exception if the JSON response contained an error."""
     if status_ok(data):
-        del data[STATUS_KEY]
+        del data[JsonKeys.STATUS]
         return
 
-    if not ERROR_KEY in data:
-        message = "JSON data did not contain '{0}'".format(ERROR_KEY)
+    if not JsonKeys.ERROR in data:
+        message = "JSON data did not contain '{0}'".format(JsonKeys.ERROR)
         raise PaletteInternalError(message, data=data)
-    raise PaletteError(data[ERROR_KEY], data=data)
+    raise PaletteError(data[JsonKeys.ERROR], data=data)
 
 
 class PaletteServer(object):
@@ -59,6 +69,7 @@ class PaletteServer(object):
     LOGIN_PATH_INFO = '/login/authenticate'
 
     STATE_PATH_INFO = '/api/v1/state'
+    MANAGE_PATH_INFO = '/api/v1/manage'
 
     COOKIE_AUTH_TKT = 'auth_tkt'
 
@@ -91,7 +102,7 @@ class PaletteServer(object):
         :returns: str -- the state of the environment.
         """
         data = self.get(self.STATE_PATH_INFO)
-        return data[STATE_KEY]
+        return data[JsonKeys.STATE]
 
     def authenticate(self):
         """Authenticate the user against this Palette server.
@@ -109,6 +120,64 @@ class PaletteServer(object):
             raise PaletteInternalError("'auth_tkt' is missing from response.")
         self.auth_tkt = res.cookies[self.COOKIE_AUTH_TKT]
 
+    def _manage(self, action, sync=True):
+        """Perform a generic 'manage' operation on the server."""
+        payload = {'action': action, 'sync': sync}
+        self.post(self.MANAGE_PATH_INFO, data=payload)
+        return True
+
+    def start(self, sync=True):
+        """Start the Tableau server.
+
+        :param sync: whether or not to wait for the action to complete.
+        :type sync: bool
+        :returns: True
+        :raises: HTTPError
+        """
+        return self._manage(ManageActions.START, sync=sync)
+
+    def stop(self, sync=True):
+        """Stop the Tableau server.
+
+        :param sync: whether or not to wait for the action to complete.
+        :type sync: bool
+        :returns: True
+        :raises: HTTPError
+        """
+        return self._manage(ManageActions.STOP, sync=sync)
+
+    def restart(self, sync=True):
+        """Restart the Tableau server.
+
+        :param sync: whether or not to wait for the action to complete.
+        :type sync: bool
+        :returns: True
+        :raises: HTTPError
+        """
+        return self._manage(ManageActions.RESTART, sync=sync)
+
+    def repair_license(self, sync=True):
+        """Repair the Tableau Server license.
+        This effectively runs 'tabadmin licenses --repair_service'
+
+        :param sync: whether or not to wait for the action to complete.
+        :type sync: bool
+        :returns: True
+        :raises: HTTPError
+        """
+        return self._manage(ManageActions.REPAIR_LICENSE, sync=sync)
+
+    def ziplogs(self, sync=True):
+        """Cleanup the Tableau Server logs.
+        This effectively runs 'tabadmin ziplogs'
+
+        :param sync: whether or not to wait for the action to complete.
+        :type sync: bool
+        :returns: True
+        :raises: HTTPError
+        """
+        return self._manage(ManageActions.ZIPLOGS, sync=sync)
+
     def get(self, url, params=None):
         """Send a GET request to the server and receives a JSON response back.
         This method should rarely be needed outside of internal use.
@@ -122,9 +191,26 @@ class PaletteServer(object):
         cookies = {self.COOKIE_AUTH_TKT: self.auth_tkt}
         res = requests.get(self._url(url), params=params, cookies=cookies)
         res.raise_for_status()
-        data = res.json()
-        raise_for_error(data)
-        return data
+        json = res.json()
+        raise_for_error(json)
+        return json
+
+    def post(self, url, data=None):
+        """Send a POST request to the server and receives a JSON response back.
+        This method should rarely be needed outside of internal use.
+
+        :param url: The Palette Server URL
+        :type url: str
+        :param data: The data payload to send with the request
+        :type data: dict
+        :returns: dict -- the JSON response
+        """
+        cookies = {self.COOKIE_AUTH_TKT: self.auth_tkt}
+        res = requests.post(self._url(url), data=data, cookies=cookies)
+        res.raise_for_status()
+        json = res.json()
+        raise_for_error(json)
+        return json
 
     def _url(self, path_info):
         """Build the full url for the specified path_info."""

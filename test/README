@@ -1,0 +1,37 @@
+Running Tests
+*************
+
+Simple Connection Tests
+=======================
+python connect.py
+
+Management Tests
+================
+These are long running and should probably be run individually.
+Use the -v option for progress output (otherwise the tests are silent).
+
+Start the Tableau Server
+------------------------
+python -m unittest manage.TestManageActions.test_start
+
+Stop the Tableau Server
+------------------------
+python -m unittest manage.TestManageActions.test_stop
+
+Restart the Tableau Server
+--------------------------
+python -m unittest manage.TestManageActions.test_restart
+
+Run repair license on the Tableau Server
+----------------------------------------
+python -m unittest manage.TestManageActions.test_repair_license
+
+Run ziplogs on the Tableau Server
+---------------------------------
+python -m unittest manage.TestManageActions.test_ziplogs
+
+Run all management tests
+------------------------
+Assuming Tableau Server is running, all management tests *may* be performed
+sequentially via (the -f option tells the testsuite to stop on error):
+python -m unittest -f manage.TestManageActions
