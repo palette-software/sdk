@@ -38,7 +38,7 @@ State
    .. sourcecode:: http
 
       HTTP/1.1 200 OK
-      Content-Type: text/javascript
+      Content-Type: application/json
 
       {
         "status": "OK",
@@ -65,11 +65,21 @@ Manage
    :statuscode 400: the required form parameter 'action' is missing.
    :statuscode 403: authentication is required (Manager or Super Admin)
 
-**Allowable actions:**
+   **Example response**
 
-* *start* - start the Tableau Server
-* *stop* - stop the Tableau Server
-* *restart* - restart the Tableau Server
-* *repair-license* - equivalent to 'tabadmin licenses --repair_service'
-* *ziplogs* - cleanup Tableau Server logs
-   
+   .. sourcecode:: http
+
+      HTTP/1.1 200 OK
+      Content-Type: application/json
+
+      {
+        "status": "OK",
+      }
+
+   **Allowable actions:**
+
+   * *start* - start the Tableau Server
+   * *stop* - stop the Tableau Server
+   * *restart* - restart the Tableau Server
+   * *repair-license* - equivalent to 'tabadmin licenses --repair_service'
+   * *ziplogs* - cleanup Tableau Server logs
