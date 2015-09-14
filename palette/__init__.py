@@ -5,5 +5,4 @@ __maintainer__ = 'Palette Software'
 __email__ = 'support@palette-software.com'
 __url__ = 'http://www.palette-software.com'
 
-
 from .server import PaletteServer, connect

@@ -5,20 +5,17 @@ import ConfigParser as configparser
 import requests
 
 from .config import PARSER, SECTION_CREDENTIALS
-from .error import PaletteError
 from .error import PaletteAuthenticationError, PaletteInternalError
 
-class JsonKeys(object):
-    """Allowable key name for JSON responses."""
-    STATUS = 'status'
-    ERROR = 'error'
-    STATE = 'state'
+from .internal import ApiObject, JsonKeys, API_PATH_INFO, raise_for_json
+from .backup import Backup
 
 class ManageActions(object):
     """Allowable actions for the 'manage' endpoint."""
     START = 'start'
     STOP = 'stop'
     RESTART = 'restart'
+    BACKUP = 'backup'
     REPAIR_LICENSE = 'repair-license'
     ZIPLOGS = 'ziplogs'
 
@@ -33,29 +30,6 @@ def check_url(url):
         raise ValueError("The url path must be '/'")
     return urlparse.urlunsplit(parts)
 
-def status_ok(data):
-    """Check if the server responded with 'status: OK' in the JSON data.
-    """
-    if JsonKeys.STATUS not in data:
-        message = "JSON data did not contain '{0}'".format(JsonKeys.STATUS)
-        raise PaletteInternalError(message, data=data)
-
-    if data[JsonKeys.STATUS] == 'OK':
-        return True
-    return False
-
-def raise_for_error(data):
-    """Raise an exception if the JSON response contained an error."""
-    if status_ok(data):
-        del data[JsonKeys.STATUS]
-        return
-
-    if not JsonKeys.ERROR in data:
-        message = "JSON data did not contain '{0}'".format(JsonKeys.ERROR)
-        raise PaletteInternalError(message, data=data)
-    raise PaletteError(data[JsonKeys.ERROR], data=data)
-
-
 class PaletteServer(object):
     """An interface to a particular Palette Server. The values
     passed to the constructor override any corresponding values in ~/.palette.
@@ -67,9 +41,8 @@ class PaletteServer(object):
     :raises: ValueError
     """
     LOGIN_PATH_INFO = '/login/authenticate'
-
-    STATE_PATH_INFO = '/api/v1/state'
-    MANAGE_PATH_INFO = '/api/v1/manage'
+    STATE_PATH_INFO = API_PATH_INFO + '/state'
+    MANAGE_PATH_INFO = API_PATH_INFO + '/manage'
 
     COOKIE_AUTH_TKT = 'auth_tkt'
 
@@ -92,6 +65,10 @@ class PaletteServer(object):
             self.password = password
         self.security_token = security_token
         self.auth_tkt = None
+
+        # aliased interface: technically invalid names but accurate.
+        # pylint: disable=invalid-name
+        self.Backup = ApiObject(self, Backup)
 
     @property
     def state(self):
@@ -156,6 +133,17 @@ class PaletteServer(object):
         """
         return self._manage(ManageActions.RESTART, sync=sync)
 
+    def backup(self, sync=True):
+        """Take a Tableau backup.
+
+        :param sync: whether or not to wait for the action to complete.
+        :type sync: bool
+        :returns: True
+        :raises: HTTPError
+        """
+        return self._manage(ManageActions.BACKUP, sync=sync)
+
+
     def repair_license(self, sync=True):
         """Repair the Tableau Server license.
         This effectively runs 'tabadmin licenses --repair_service'
@@ -178,7 +166,7 @@ class PaletteServer(object):
         """
         return self._manage(ManageActions.ZIPLOGS, sync=sync)
 
-    def get(self, url, params=None):
+    def get(self, url, params=None, required=None):
         """Send a GET request to the server and receives a JSON response back.
         This method should rarely be needed outside of internal use.
 
@@ -192,10 +180,10 @@ class PaletteServer(object):
         res = requests.get(self._url(url), params=params, cookies=cookies)
         res.raise_for_status()
         json = res.json()
-        raise_for_error(json)
+        raise_for_json(json, required=required)
         return json
 
-    def post(self, url, data=None):
+    def post(self, url, data=None, required=None):
         """Send a POST request to the server and receives a JSON response back.
         This method should rarely be needed outside of internal use.
 
@@ -209,7 +197,7 @@ class PaletteServer(object):
         res = requests.post(self._url(url), data=data, cookies=cookies)
         res.raise_for_status()
         json = res.json()
-        raise_for_error(json)
+        raise_for_json(json, required=required)
         return json
 
     def _url(self, path_info):
@@ -218,7 +206,7 @@ class PaletteServer(object):
 
 
 def connect(url, username=None, password=None, security_token=None):
-    """Create a PaletteServer instance and authenticate
+    """Create a PaletteServer instance and authenticate.
 
     :returns: a :class:`PaletteServer <palette.PaletteServer>` instance
     :raises: PaletteAuthenticationError, ValueError

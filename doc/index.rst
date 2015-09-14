@@ -4,7 +4,7 @@ Welcome to the Palette Developer Resources
 Contents:
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
 
    api
    sdk

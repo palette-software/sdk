@@ -13,6 +13,7 @@ import palette
 
 URL = 'http://localhost:8080'
 
+# The backup test is separate
 class TestManageActions(unittest.TestCase):
     """ These tests assume a valid ~/.palette file."""
     def setUp(self):

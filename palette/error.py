@@ -20,3 +20,9 @@ class PaletteAuthenticationError(PaletteError):
     def __init__(self):
         super(PaletteAuthenticationError, self).__init__()
         self.message = 'Invalid username or password'
+
+class PaletteJsonError(PaletteInternalError):
+    """ Missing required key in JSON response """
+    def __init__(self, key, data=None):
+        message = "JSON data did not contain '{0}'".format(key)
+        super(PaletteJsonError, self).__init__(message, data=data)
