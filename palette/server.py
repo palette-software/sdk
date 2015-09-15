@@ -8,6 +8,8 @@ from .config import PARSER, SECTION_CREDENTIALS
 from .error import PaletteAuthenticationError, PaletteInternalError
 
 from .internal import ApiObject, JsonKeys, API_PATH_INFO, raise_for_json
+
+# NOTE: this imports all submodules with .server
 from .backup import Backup
 
 class ManageActions(object):
@@ -143,6 +145,24 @@ class PaletteServer(object):
         """
         return self._manage(ManageActions.BACKUP, sync=sync)
 
+    def restore(self, backup, sync=True):
+        """Restore Tableau from a tsbak file.
+
+        :param backup: the Backup instance
+                       or path of the backup file on the primary.
+        :type path: str
+        :param sync: whether or not to wait for the action to complete.
+        :type sync: bool
+        :returns: True
+        :raises: HTTPError
+        """
+        if isinstance(backup, Backup):
+            backup = backup.uri
+        elif not backup or not isinstance(backup, basestring):
+            raise ValueError("Invalid 'backup' specified.")
+        payload = {'action': 'restore', 'filename': backup, 'sync': sync}
+        self.post(self.MANAGE_PATH_INFO, data=payload)
+        return True
 
     def repair_license(self, sync=True):
         """Repair the Tableau Server license.

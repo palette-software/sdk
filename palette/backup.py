@@ -5,8 +5,8 @@ from .internal import API_PATH_INFO, translate_to_variable_name
 
 class Backup(object):
     """ A Tableau Server backup object.
-    
-    The classmethods of this class are most easily accessed via 
+
+    The classmethods of this class are most easily accessed via
     ```server.Backup.method(...)``  where `server` is a PaletteServer instance.
 
     >>> server = palette.connect(URL)
@@ -54,7 +54,7 @@ class Backup(object):
     @classmethod
     def list_all(cls, server, limit=7, desc=True):
         """ Return a list of available backups.
-        
+
         :param server: The server instance
         :type username: PaletteServer
         :param limit: the maximum number of backup instances returned (max=100).
