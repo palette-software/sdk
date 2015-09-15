@@ -1,6 +1,6 @@
 include pylint.mk
 
-all: pylint sdist doc
+all: pylint sdist
 .PHONY: all
 
 sdist:
