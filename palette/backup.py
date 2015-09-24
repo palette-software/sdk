@@ -1,9 +1,8 @@
 """ Classes and functions for handling Tableau Backups """
 from __future__ import absolute_import
-from .error import PaletteInternalError
-from .internal import API_PATH_INFO, translate_to_variable_name
+from .internal import API_PATH_INFO, DictObject
 
-class Backup(object):
+class Backup(DictObject):
     """ A Tableau Server backup object.
 
     The classmethods of this class are most easily accessed via
@@ -17,26 +16,6 @@ class Backup(object):
 
     MAX_LIMIT = 100
     PATH_INFO = API_PATH_INFO + '/backups'
-
-    def __init__(self, server, unique_id, data=None):
-        # pylint: disable=redefined-builtin
-        self.server = server
-        self.unique_id = unique_id
-        if not data is None:
-            for key in data:
-                if key == 'id':
-                    continue
-                name = translate_to_variable_name(key)
-                setattr(self, name, data[key])
-
-    @classmethod
-    def from_json(cls, server, data):
-        """ Convert a JSON object (as a dictionary) to an instance of `cls`.
-        """
-        if not 'id' in data:
-            message = "JSON object '{0}' does not contain an 'id'"
-            raise PaletteInternalError(message.format(cls.__name__))
-        return cls(server, data['id'], data)
 
     @classmethod
     def get(cls, server, backup_id):

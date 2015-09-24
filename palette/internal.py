@@ -31,6 +31,34 @@ class ApiObject(object):
         fmt = "type object '{0}' has no classmethod '{1}'"
         raise AttributeError(fmt.format(self.cls.__name__, name))
 
+
+class DictObject(dict):
+    """Base class that makes a dict function like an objects by exposing the
+    keys of the dict as properties."""
+
+    def __init__(self, server, data=None):
+        self.server = server
+        dict.__init__(self, data)
+
+    def __getattr__(self, name):
+        if name == 'unique_id':
+            return self['id']
+        key = translate_to_json_key(name)
+        if key in self:
+            return self[key]
+        fmt = "object '{0}' has no property '{1}'"
+        raise AttributeError(fmt.format(self.cls.__name__, name))
+
+    @classmethod
+    def from_json(cls, server, data):
+        """ Convert a JSON object (as a dictionary) to an instance of `cls`.
+        """
+        if not 'id' in data:
+            message = "JSON object '{0}' does not contain an 'id'"
+            raise PaletteInternalError(message.format(cls.__name__))
+        return cls(server, data)
+
+
 class JsonKeys(object):
     """Allowable key name for JSON responses."""
     STATUS = 'status'
@@ -71,3 +99,7 @@ def raise_for_json(data, required=None):
 def translate_to_variable_name(key):
     """Convert a 'pretty' JSON key to a valid variable name."""
     return key.replace('-', '_')
+
+def translate_to_json_key(key):
+    """Convert a variable name to a 'pretty' JSON key."""
+    return key.replace('_', '-')

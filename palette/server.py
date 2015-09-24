@@ -1,12 +1,15 @@
 """Server classes for Palette"""
+import re
 import urlparse
 import ConfigParser as configparser
-
 import requests
+
+from urllib import urlencode
 
 from .config import PARSER, SECTION_CREDENTIALS
 from .error import PaletteAuthenticationError, PaletteInternalError
 
+from . import logger
 from .internal import ApiObject, JsonKeys, API_PATH_INFO, raise_for_json
 
 # NOTE: this imports all submodules with .server
@@ -31,6 +34,14 @@ def check_url(url):
     if parts.path != '/' and parts.path != '':
         raise ValueError("The url path must be '/'")
     return urlparse.urlunsplit(parts)
+
+def display_url(url, params=None):
+    """Create a printable value for the url with optional query string.
+    The output is primarily for debugging output.
+    """
+    if params:
+        return url + '?' + urlencode(params)
+    return url
 
 class PaletteServer(object):
     """An interface to a particular Palette Server. The values
@@ -88,22 +99,26 @@ class PaletteServer(object):
 
         :raises: PaletteAuthenticationError
         """
-        payload = {'username': self.username, 'password': self.password}
-        res = requests.post(self._url(self.LOGIN_PATH_INFO),
-                            data=payload,
-                            allow_redirects=False)
+        payload = {'username': self.username,
+                   'password': re.sub('.', '*', self.password)}
+        logger.debug('POST ' + self.LOGIN_PATH_INFO + ' ' + str(payload))
+        payload['password'] = self.password
+
+        url = self._url(self.LOGIN_PATH_INFO)
+        res = requests.post(url, data=payload, allow_redirects=False)
+        logger.debug(str(res.status_code) + ' ' + str(res.reason))
         if res.status_code >= 400:
             # returns a 3xx status code (redirect) on success
             raise PaletteAuthenticationError()
         if self.COOKIE_AUTH_TKT not in res.cookies:
             raise PaletteInternalError("'auth_tkt' is missing from response.")
         self.auth_tkt = res.cookies[self.COOKIE_AUTH_TKT]
+        logger.info("Authenticated username '%s'", self.username)
 
     def _manage(self, action, sync=True):
         """Perform a generic 'manage' operation on the server."""
         payload = {'action': action, 'sync': sync}
-        self.post(self.MANAGE_PATH_INFO, data=payload)
-        return True
+        return self.post(self.MANAGE_PATH_INFO, data=payload)
 
     def start(self, sync=True):
         """Start the Tableau server.
@@ -113,7 +128,12 @@ class PaletteServer(object):
         :returns: True
         :raises: HTTPError
         """
-        return self._manage(ManageActions.START, sync=sync)
+        self._manage(ManageActions.START, sync=sync)
+        if sync:
+            logger.info("Tableau server started.")
+        else:
+            logger.info("Tableau server starting...")
+        return True
 
     def stop(self, sync=True):
         """Stop the Tableau server.
@@ -123,7 +143,13 @@ class PaletteServer(object):
         :returns: True
         :raises: HTTPError
         """
-        return self._manage(ManageActions.STOP, sync=sync)
+        self._manage(ManageActions.STOP, sync=sync)
+        if sync:
+            logger.info("Tableau server stopped.")
+        else:
+            logger.info("Tableau server stopping...")
+        return True
+
 
     def restart(self, sync=True):
         """Restart the Tableau server.
@@ -133,17 +159,30 @@ class PaletteServer(object):
         :returns: True
         :raises: HTTPError
         """
-        return self._manage(ManageActions.RESTART, sync=sync)
+        self._manage(ManageActions.RESTART, sync=sync)
+        if sync:
+            logger.info("Tableau server restarted.")
+        else:
+            logger.info("Tableau server restarting...")
+        return True
+
 
     def backup(self, sync=True):
         """Take a Tableau backup.
 
         :param sync: whether or not to wait for the action to complete.
         :type sync: bool
-        :returns: True
+        :returns: a Backup instance or True if asynchronous (sync == False)
         :raises: HTTPError
         """
-        return self._manage(ManageActions.BACKUP, sync=sync)
+        data = self._manage(ManageActions.BACKUP, sync=sync)
+        if not sync:
+            logger.info("Backup in progress...")
+            return True
+
+        result = self.Backup.from_json(data)
+        logger.info("Backup completed '%d': %s", data['id'], data['url'])
+        return result
 
     def restore(self, backup, sync=True):
         """Restore Tableau from a tsbak file.
@@ -173,7 +212,12 @@ class PaletteServer(object):
         :returns: True
         :raises: HTTPError
         """
-        return self._manage(ManageActions.REPAIR_LICENSE, sync=sync)
+        self._manage(ManageActions.REPAIR_LICENSE, sync=sync)
+        if sync:
+            logger.info("License repair completed")
+        else:
+            logger.info("License repair in progress...")
+        return True
 
     def ziplogs(self, sync=True):
         """Cleanup the Tableau Server logs.
@@ -184,7 +228,13 @@ class PaletteServer(object):
         :returns: True
         :raises: HTTPError
         """
-        return self._manage(ManageActions.ZIPLOGS, sync=sync)
+        # Return information about the resulting zip file (like backup)
+        self._manage(ManageActions.ZIPLOGS, sync=sync)
+        if sync:
+            logger.info("Ziplogs completed")
+        else:
+            logger.info("Ziplogs in progress...")
+        return True
 
     def get(self, url, params=None, required=None):
         """Send a GET request to the server and receives a JSON response back.
@@ -197,9 +247,11 @@ class PaletteServer(object):
         :returns: dict -- the JSON response
         """
         cookies = {self.COOKIE_AUTH_TKT: self.auth_tkt}
+        logger.debug('GET %s', display_url(url, params))
         res = requests.get(self._url(url), params=params, cookies=cookies)
         res.raise_for_status()
         json = res.json()
+        logger.debug('%s %s %s', str(res.status_code), str(res.reason), json)
         raise_for_json(json, required=required)
         return json
 
@@ -214,9 +266,11 @@ class PaletteServer(object):
         :returns: dict -- the JSON response
         """
         cookies = {self.COOKIE_AUTH_TKT: self.auth_tkt}
+        logger.debug('POST %s %s', url, str(data))
         res = requests.post(self._url(url), data=data, cookies=cookies)
         res.raise_for_status()
         json = res.json()
+        logger.debug('%s %s %s', str(res.status_code), str(res.reason), json)
         raise_for_json(json, required=required)
         return json
 
@@ -234,4 +288,5 @@ def connect(url, username=None, password=None, security_token=None):
     server = PaletteServer(url, username=username, password=password,
                            security_token=security_token)
     server.authenticate()
+    logger.info("Connected to server '%s'", url)
     return server
