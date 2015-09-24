@@ -10,7 +10,7 @@ class Backup(object):
     ```server.Backup.method(...)``  where `server` is a PaletteServer instance.
 
     >>> server = palette.connect(URL)
-    >>> print server.Backup.list(limit=1)
+    >>> print server.Backup.list_all(limit=1)
     [<palette.backup.Backup object at 0x7f719714cc10>]
 
     """
