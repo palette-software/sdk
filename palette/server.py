@@ -43,6 +43,14 @@ def display_url(url, params=None):
         return url + '?' + urlencode(params)
     return url
 
+def sanitize(data):
+    """Return a string representation of the data with passwords removed."""
+    data = data.copy()
+    for key in data:
+        if 'password' in key.lower():
+            data[key] = re.sub('.', '*', data[key])
+    return str(data)
+
 class PaletteServer(object):
     """An interface to a particular Palette Server. The values
     passed to the constructor override any corresponding values in ~/.palette.
@@ -99,14 +107,13 @@ class PaletteServer(object):
 
         :raises: PaletteAuthenticationError
         """
-        payload = {'username': self.username,
-                   'password': re.sub('.', '*', self.password)}
-        logger.debug('POST ' + self.LOGIN_PATH_INFO + ' ' + str(payload))
-        payload['password'] = self.password
+        payload = {'username': self.username, 'password': self.password}
+        logger.debug('POST ' + self.LOGIN_PATH_INFO + ' ' + sanitize(payload))
 
         url = self._url(self.LOGIN_PATH_INFO)
         res = requests.post(url, data=payload, allow_redirects=False)
         logger.debug(str(res.status_code) + ' ' + str(res.reason))
+
         if res.status_code >= 400:
             # returns a 3xx status code (redirect) on success
             raise PaletteAuthenticationError()
@@ -150,7 +157,6 @@ class PaletteServer(object):
             logger.info("Tableau server stopping...")
         return True
 
-
     def restart(self, sync=True):
         """Restart the Tableau server.
 
@@ -184,22 +190,29 @@ class PaletteServer(object):
         logger.info("Backup completed '%d': %s", data['id'], data['url'])
         return result
 
-    def restore(self, backup, sync=True):
+    def restore(self, backup, data_only=False, password=None, sync=True):
         """Restore Tableau from a tsbak file.
 
-        :param backup: the Backup instance
-                       or path of the backup file on the primary.
+        :param backup: the Backup instance or URL of the file.
         :type path: str
+        :param data_only: restore only data and not config.
+        :type data_only: bool
+        :param password: The tableau run-as-user-password (if needed)
+        :type password: str
         :param sync: whether or not to wait for the action to complete.
         :type sync: bool
         :returns: True
         :raises: HTTPError
         """
         if isinstance(backup, Backup):
-            backup = backup.uri
+            backup = backup.url
         elif not backup or not isinstance(backup, basestring):
             raise ValueError("Invalid 'backup' specified.")
-        payload = {'action': 'restore', 'filename': backup, 'sync': sync}
+        payload = {'action': 'restore', 'url': backup, 'sync': sync}
+        if password:
+            payload['password'] = password
+        if data_only:
+            payload['data-only'] = data_only
         self.post(self.MANAGE_PATH_INFO, data=payload)
         return True
 
@@ -266,7 +279,7 @@ class PaletteServer(object):
         :returns: dict -- the JSON response
         """
         cookies = {self.COOKIE_AUTH_TKT: self.auth_tkt}
-        logger.debug('POST %s %s', url, str(data))
+        logger.debug('POST %s %s', url, sanitize(data))
         res = requests.post(self._url(url), data=data, cookies=cookies)
         res.raise_for_status()
         json = res.json()

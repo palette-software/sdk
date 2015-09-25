@@ -15,11 +15,16 @@ class TestRestore(unittest.TestCase):
     def setUp(self):
         self.server = palette.connect(URL)
     def test_backup(self):
-        self.server.backup()
+        backup = self.server.backup()
+        self.assertIn('url', backup)
     def test_restore(self):
         backups = self.server.Backup.list_all(limit=1)
         self.assertTrue(backups)
         self.server.restore(backups[0])
+    def test_restore_data_only(self):
+        backups = self.server.Backup.list_all(limit=1)
+        self.assertTrue(backups)
+        self.server.restore(backups[0], data_only=True)
 
 if __name__ == '__main__':
     unittest.main()
