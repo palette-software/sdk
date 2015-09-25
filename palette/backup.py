@@ -10,7 +10,17 @@ class Backup(DictObject):
 
     >>> server = palette.connect(URL)
     >>> print server.Backup.list_all(limit=1)
-    [<palette.backup.Backup object at 0x7f719714cc10>]
+    [{u'id': 56, ...}]
+
+    Backup instances are mapping objects so the properties may be easily
+    inspected:
+
+    >>> from pprint import pprint
+    >>> pprint(backup)
+    {u'id': 56,
+     u'url': u's3://test-palette-com/tableau-backups/20150924_155401.tsbak',
+     u'size': 6586553,
+     u'creation-time': u'2015-09-24T22:55:17.861285Z'}
 
     """
 

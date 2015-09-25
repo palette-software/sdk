@@ -37,3 +37,17 @@ the basis for the entire SDK.
 
 See the :ref:`python-api` for further information.
 
+Logging
+-------
+
+The API logs information to a standard Python logger named `palette`.
+
+.. code-block:: python
+
+   import logging
+   logger = logging.getLogger('palette')
+   logger.addHandler(logging.StreamHandler())
+   logger.setLevel(logging.DEBUG)
+
+The above sample code will log everything that the 'palette' package does to
+standard error, including printing the data sent and received by the web API.
