@@ -32,9 +32,11 @@ class Backup(DictObject):
         """ Return information about a backup by unique id.
 
         :param server: The server instance
-        :type username: PaletteServer
+        :type server: PaletteServer
         :param backup_id: the unique identifier of a backup.
         :type backup_id: int
+        :return: the backup
+        :rtype: Backup instance
         :raises: HTTPError
         """
         path_info = cls.PATH_INFO + '/' + str(backup_id)
@@ -45,11 +47,13 @@ class Backup(DictObject):
         """ Return a list of available backups.
 
         :param server: The server instance
-        :type username: PaletteServer
+        :type server: PaletteServer
         :param limit: the maximum number of backup instances returned (max=100).
         :type limit: int
         :param desc: sort descending or not
         :type desc: bool
+        :return: the available backups
+        :rtype: list of Backup instances
         :raises: ValueError, HTTPError
         """
         if limit > cls.MAX_LIMIT:

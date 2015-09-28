@@ -49,6 +49,90 @@ State
    :statuscode 200: OK
    :statuscode 403: authentication is required (any level)
 
+System
+======
+
+.. http:get:: /api/v1/system
+
+   Return the contents of the system table
+
+   **Example request**:
+
+   .. sourcecode:: http
+
+      GET /api/v1/state
+      Host: example.palette-software.net
+      Cookie: auth_tkt=<value>
+
+   **Example response**
+
+   .. sourcecode:: http
+
+      HTTP/1.1 200 OK
+      Content-Type: application/json
+
+      {
+        "status": "OK",
+	"alerts-admin-enabled": false,
+	"alerts-enabled": true,
+	"alerts-new-user-enabled": false,
+	...
+      }
+
+   :reqheader Cookie: the auth_tkt returned from authentication.
+   :statuscode 200: OK
+   :statuscode 403: authentication is required (readonly admin or greater)
+
+
+.. http:post:: /api/v1/system
+
+   Update one or more keys in the system table by specifying each key and
+   associated value as POST data. 
+
+   :form *key*: the particular key to be updated.
+   :reqheader Cookie: the auth_tkt returned from authentication.
+   :statuscode 200: OK
+   :statuscode 403: authentication is required (manager admin or greater)
+
+.. http:get:: /api/v1/system/(key)
+
+   Return the value of a specified key in the system table.
+
+   **Example request**:
+
+   .. sourcecode:: http
+
+      GET /api/v1/state/auto-update-enabled
+      Host: example.palette-software.net
+      Cookie: auth_tkt=<value>
+
+   **Example response**
+
+   .. sourcecode:: http
+
+      HTTP/1.1 200 OK
+      Content-Type: application/json
+
+      {
+        "status": "OK",
+	"value" : false
+      }
+
+   :reqheader Cookie: the auth_tkt returned from authentication.
+   :statuscode 200: OK
+   :statuscode 403: authentication is required (readonly admin or greater)
+
+
+.. http:post:: /api/v1/system/(key)
+
+   Update exactly one key in the system table. 
+
+   :form value: (*str, required*) the value to set for *key*
+   :reqheader Cookie: the auth_tkt returned from authentication.
+   :statuscode 200: OK
+   :statuscode 403: authentication is required (any manager admin or greater)
+
+
 Manage
 ======
 

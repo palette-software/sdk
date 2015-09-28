@@ -11,6 +11,12 @@ The ``palette`` module
 .. autoclass:: palette.PaletteServer
    :members:
 
+``palette.system``
+------------------
+
+.. autoclass:: palette.system.System
+   :members:
+
 ``palette.backup``
 ------------------
 

@@ -12,9 +12,6 @@ from .error import PaletteAuthenticationError, PaletteInternalError
 from . import logger
 from .internal import ApiObject, JsonKeys, API_PATH_INFO, raise_for_json
 
-# NOTE: this imports all submodules with .server
-from .backup import Backup
-
 class ManageActions(object):
     """Allowable actions for the 'manage' endpoint."""
     START = 'start'
@@ -87,9 +84,16 @@ class PaletteServer(object):
         self.security_token = security_token
         self.auth_tkt = None
 
-        # aliased interface: technically invalid names but accurate.
-        # pylint: disable=invalid-name
-        self.Backup = ApiObject(self, Backup)
+    def __getattr__(self, name):
+        if name == 'Backup':
+            from .backup import Backup
+            return ApiObject(self, Backup)
+        if name == 'System':
+            from .system import System
+            return ApiObject(self, System)
+        if name == 'system':
+            from .system import SystemMapping
+            return SystemMapping(self)
 
     @property
     def state(self):
@@ -204,7 +208,7 @@ class PaletteServer(object):
         :returns: True
         :raises: HTTPError
         """
-        if isinstance(backup, Backup):
+        if not isinstance(backup, basestring):
             backup = backup.url
         elif not backup or not isinstance(backup, basestring):
             raise ValueError("Invalid 'backup' specified.")
